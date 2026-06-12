@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0D1117" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Pomo" />
+  <meta name="description" content="A clean Pomodoro focus timer" />
+  <link rel="manifest" href="./manifest.json" />
+  <title>Pomo – Focus Timer</title>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0D1117;
+      --card: rgba(255,255,255,0.03);
+      --border: rgba(255,255,255,0.06);
+      --text: #F0F4FF;
+      --muted: #4A5568;
+      --track: #1A2030;
+      --amber: #F5A623;
+      --amber-dim: #7A5210;
+      --green: #6BCB77;
+      --green-dim: #2D6B3A;
+      --blue: #7EB8F7;
+      --blue-dim: #2A4E7A;
+      --accent: var(--amber);
+      --accent-dim: var(--amber-dim);
+      --r: 110;
+      --circ: 691.15; /* 2 * PI * 110 */
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: env(safe-area-inset-top, 16px) 20px env(safe-area-inset-bottom, 16px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    #glow {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      transition: background 0.8s ease;
+      background: radial-gradient(ellipse 500px 400px at 50% 40%, rgba(245,166,35,0.09), transparent 70%);
+    }
+
+    .card {
+      position: relative;
+      z-index: 1;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 28px 36px 24px;
+      width: 100%;
+      max-width: 380px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 22px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+
+    /* Header */
+    .header {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand {
+      font-family: 'Space Mono', monospace;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--text);
+    }
+    .dots {
+      display: flex;
+      gap: 7px;
+      align-items: center;
+    }
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--track);
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+    .dot.filled {
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    /* Mode tabs */
+    .modes {
+      display: flex;
+      width: 100%;
+      justify-content: center;
+    }
+    .mode-btn {
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 6px 14px 8px;
+      letter-spacing: 0.04em;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: color 0.3s, border-color 0.3s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .mode-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    /* Timer SVG */
+    .timer-wrap {
+      position: relative;
+      width: 260px;
+      height: 260px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .timer-svg {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+    }
+    #ring-track {
+      fill: none;
+      stroke: var(--track);
+      stroke-width: 10;
+    }
+    #ring-progress {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 10;
+      stroke-linecap: round;
+      stroke-dasharray: var(--circ);
+      stroke-dashoffset: 0;
+      transform-origin: center;
+      transform: rotate(-90deg);
+      transition: stroke-dashoffset 1s linear, stroke 0.6s ease;
+    }
+    #ring-tip {
+      fill: var(--accent);
+      filter: drop-shadow(0 0 6px var(--accent));
+      transition: cx 1s linear, cy 1s linear;
+    }
+    .time-display {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      z-index: 1;
+    }
+    #time-text {
+      font-family: 'Space Mono', monospace;
+      font-size: 58px;
+      font-weight: 700;
+      letter-spacing: -2px;
+      line-height: 1;
+      color: var(--text);
+      transition: color 0.3s;
+    }
+    #status-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      transition: color 0.3s;
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .ctrl-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .ctrl-btn:active { background: rgba(255,255,255,0.09); }
+    #play-btn {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--amber), rgba(245,166,35,0.8));
+      box-shadow: 0 4px 24px rgba(245,166,35,0.35);
+      transition: background 0.3s, box-shadow 0.3s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #play-btn:active { transform: scale(0.95); }
+
+    .session-count {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .session-count span {
+      color: var(--accent);
+      font-weight: 600;
+      transition: color 0.3s;
+    }
+
+    /* Install banner */
+    #install-banner {
+      display: none;
+      position: fixed;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(20, 25, 35, 0.97);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 14px 20px;
+      width: calc(100% - 40px);
+      max-width: 360px;
+      z-index: 100;
+      align-items: center;
+      gap: 12px;
+      backdrop-filter: blur(16px);
+    }
+    #install-banner.show { display: flex; }
+    #install-banner p { font-size: 13px; color: #8892A4; flex: 1; line-height: 1.4; }
+    #install-banner p strong { color: var(--text); display: block; margin-bottom: 2px; }
+    #install-btn {
+      background: var(--accent);
+      color: #0D1117;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      font-family: 'Inter', sans-serif;
+    }
+    #dismiss-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+      padding: 4px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; animation: none !important; }
+      #ring-progress { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="glow"></div>
+
+<div class="card">
+  <!-- Header -->
+  <div class="header">
+    <span class="brand">pomo</span>
+    <div class="dots" id="dots">
+      <div class="dot" id="d0"></div>
+      <div class="dot" id="d1"></div>
+      <div class="dot" id="d2"></div>
+      <div class="dot" id="d3"></div>
+    </div>
+  </div>
+
+  <!-- Mode tabs -->
+  <div class="modes">
+    <button class="mode-btn active" data-mode="work">Focus</button>
+    <button class="mode-btn" data-mode="short">Short Break</button>
+    <button class="mode-btn" data-mode="long">Long Break</button>
+  </div>
+
+  <!-- Timer -->
+  <div class="timer-wrap">
+    <svg class="timer-svg" viewBox="0 0 260 260">
+      <circle id="ring-track" cx="130" cy="130" r="110" />
+      <circle id="ring-progress" cx="130" cy="130" r="110" />
+      <circle id="ring-tip" cx="130" cy="20" r="6" />
+    </svg>
+    <div class="time-display">
+      <div id="time-text">25:00</div>
+      <div id="status-label">Ready</div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="ctrl-btn" id="reset-btn" aria-label="Reset">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4A5568" stroke-width="2" stroke-linecap="round">
+        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+        <path d="M3 3v5h5"/>
+      </svg>
+    </button>
+
+    <button id="play-btn" aria-label="Start">
+      <svg id="play-icon" width="24" height="24" viewBox="0 0 24 24" fill="#0D1117">
+        <polygon points="6,3 20,12 6,21"/>
+      </svg>
+    </button>
+
+    <button class="ctrl-btn" id="skip-btn" aria-label="Skip">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4A5568" stroke-width="2" stroke-linecap="round">
+        <polygon points="5,4 15,12 5,20"/>
+        <line x1="19" y1="4" x2="19" y2="20"/>
+      </svg>
+    </button>
+  </div>
+
+  <p class="session-count">Sessions today — <span id="session-num">0</span></p>
+</div>
+
+<!-- Install banner -->
+<div id="install-banner">
+  <div>
+    <p><strong>Install Pomo</strong>Add to your home screen for quick access</p>
+  </div>
+  <button id="install-btn">Install</button>
+  <button id="dismiss-btn" aria-label="Dismiss">×</button>
+</div>
+
+<script>
+  // ── Config ──────────────────────────────────────────────
+  const MODES = {
+    work:  { label: 'Focus',       duration: 25 * 60, color: '#F5A623', dim: '#7A5210', glow: 'rgba(245,166,35,0.09)'  },
+    short: { label: 'Short Break', duration:  5 * 60, color: '#6BCB77', dim: '#2D6B3A', glow: 'rgba(107,203,119,0.09)' },
+    long:  { label: 'Long Break',  duration: 15 * 60, color: '#7EB8F7', dim: '#2A4E7A', glow: 'rgba(126,184,247,0.09)' },
+  };
+  const R = 110, CX = 130, CY = 130;
+  const CIRC = 2 * Math.PI * R;
+
+  // ── State ────────────────────────────────────────────────
+  let mode     = 'work';
+  let timeLeft = MODES.work.duration;
+  let running  = false;
+  let sessions = 0;
+  let ticker   = null;
+  let audioCtx = null;
+  let blinkOn  = true;
+  let blinkTimer = null;
+
+  // ── DOM refs ─────────────────────────────────────────────
+  const glow         = document.getElementById('glow');
+  const timeText     = document.getElementById('time-text');
+  const statusLabel  = document.getElementById('status-label');
+  const ringProgress = document.getElementById('ring-progress');
+  const ringTip      = document.getElementById('ring-tip');
+  const playBtn      = document.getElementById('play-btn');
+  const playIcon     = document.getElementById('play-icon');
+  const sessionNum   = document.getElementById('session-num');
+  const modeBtns     = document.querySelectorAll('.mode-btn');
+
+  // ── Helpers ──────────────────────────────────────────────
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function setAccent(color) {
+    document.documentElement.style.setProperty('--accent', color);
+  }
+
+  function updateRing(tl, total) {
+    const progress = tl / total;
+    const offset   = CIRC * (1 - progress);
+    ringProgress.style.strokeDashoffset = offset;
+
+    const angle = (2 * Math.PI * (1 - progress)) - Math.PI / 2;
+    const tx = CX + R * Math.cos(angle);
+    const ty = CY + R * Math.sin(angle);
+    ringTip.setAttribute('cx', tx.toFixed(2));
+    ringTip.setAttribute('cy', ty.toFixed(2));
+    ringTip.style.display = progress < 0.01 ? 'none' : '';
+  }
+
+  function updateDots() {
+    for (let i = 0; i < 4; i++) {
+      const d = document.getElementById('d' + i);
+      d.classList.toggle('filled', i < (sessions % 4));
+    }
+  }
+
+  function renderTime(tl) {
+    const m = Math.floor(tl / 60);
+    const s = tl % 60;
+    timeText.textContent = pad(m) + ':' + pad(s);
+  }
+
+  function setMode(m, autoStart) {
+    mode = m;
+    timeLeft = MODES[m].duration;
+    running = false;
+    clearInterval(ticker);
+    clearInterval(blinkTimer);
+
+    const cfg = MODES[m];
+    setAccent(cfg.color);
+    glow.style.background = `radial-gradient(ellipse 500px 400px at 50% 40%, ${cfg.glow}, transparent 70%)`;
+    ringProgress.style.stroke = cfg.color;
+    ringTip.style.fill = cfg.color;
+    ringTip.style.filter = `drop-shadow(0 0 6px ${cfg.color})`;
+
+    playBtn.style.background = `linear-gradient(135deg, ${cfg.color}, ${cfg.color}CC)`;
+    playBtn.style.boxShadow = `0 4px 24px ${cfg.color}50`;
+
+    modeBtns.forEach(b => b.classList.toggle('active', b.dataset.mode === m));
+    renderTime(timeLeft);
+    updateRing(timeLeft, MODES[m].duration);
+    statusLabel.textContent = 'Ready';
+    setPlayIcon(false);
+
+    if (autoStart) startTimer();
+  }
+
+  function setPlayIcon(isRunning) {
+    if (isRunning) {
+      playIcon.innerHTML = `<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>`;
+      playIcon.setAttribute('fill', '#fff');
+    } else {
+      playIcon.innerHTML = `<polygon points="6,3 20,12 6,21"/>`;
+      playIcon.setAttribute('fill', '#0D1117');
+    }
+  }
+
+  // ── Audio ────────────────────────────────────────────────
+  function playTone(freq, dur, delay) {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = audioCtx;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + (delay || 0));
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.3, ctx.currentTime + (delay || 0));
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (delay || 0) + dur);
+      osc.start(ctx.currentTime + (delay || 0));
+      osc.stop(ctx.currentTime + (delay || 0) + dur);
+    } catch(e) {}
+  }
+
+  function playComplete() {
+    playTone(880, 0.2, 0);
+    playTone(1100, 0.3, 0.25);
+    playTone(880, 0.2, 0.55);
+  }
+
+  // ── Timer logic ──────────────────────────────────────────
+  function startTimer() {
+    running = true;
+    setPlayIcon(true);
+    statusLabel.textContent = MODES[mode].label;
+
+    // disable smooth transition while ticking
+    ringProgress.style.transition = 'stroke-dashoffset 1s linear, stroke 0.6s ease';
+
+    clearInterval(blinkTimer);
+    blinkTimer = setInterval(() => {
+      blinkOn = !blinkOn;
+      const t = timeText.textContent;
+      const colon = blinkOn ? ':' : '<span style="opacity:0.25">:</span>';
+      const parts = t.split(':');
+      timeText.innerHTML = parts[0] + colon + parts[1];
+    }, 500);
+
+    ticker = setInterval(() => {
+      timeLeft--;
+      renderTime(timeLeft);
+      updateRing(timeLeft, MODES[mode].duration);
+      if (timeLeft <= 0) {
+        clearInterval(ticker);
+        clearInterval(blinkTimer);
+        running = false;
+        onComplete();
+      }
+    }, 1000);
+  }
+
+  function pauseTimer() {
+    running = false;
+    clearInterval(ticker);
+    clearInterval(blinkTimer);
+    setPlayIcon(false);
+    statusLabel.textContent = 'Paused';
+    ringProgress.style.transition = 'stroke-dashoffset 0.3s ease, stroke 0.6s ease';
+    renderTime(timeLeft); // clear blink
+  }
+
+  function onComplete() {
+    playComplete();
+    setPlayIcon(false);
+    statusLabel.textContent = 'Done!';
+    timeText.style.color = MODES[mode].color;
+    renderTime(0);
+
+    // Notify
+    if (Notification.permission === 'granted') {
+      new Notification('Pomo', {
+        body: mode === 'work' ? '🎉 Focus session complete! Time for a break.' : '⏰ Break over. Ready to focus?',
+        icon: './manifest.json',
+        silent: false,
+      });
+    }
+
+    setTimeout(() => {
+      timeText.style.color = '';
+      if (mode === 'work') {
+        sessions++;
+        sessionNum.textContent = sessions;
+        updateDots();
+        const next = (sessions % 4 === 0) ? 'long' : 'short';
+        setMode(next, false);
+      } else {
+        setMode('work', false);
+      }
+    }, 1500);
+  }
+
+  // ── Button handlers ──────────────────────────────────────
+  playBtn.addEventListener('click', () => {
+    if (timeLeft === 0) { setMode(mode, true); return; }
+    if (running) { pauseTimer(); }
+    else { playTone(440, 0.1); startTimer(); }
+  });
+
+  document.getElementById('reset-btn').addEventListener('click', () => {
+    clearInterval(ticker);
+    clearInterval(blinkTimer);
+    running = false;
+    timeLeft = MODES[mode].duration;
+    renderTime(timeLeft);
+    updateRing(timeLeft, MODES[mode].duration);
+    setPlayIcon(false);
+    statusLabel.textContent = 'Ready';
+    timeText.style.color = '';
+  });
+
+  document.getElementById('skip-btn').addEventListener('click', () => {
+    const keys = Object.keys(MODES);
+    const next = keys[(keys.indexOf(mode) + 1) % keys.length];
+    setMode(next, false);
+  });
+
+  modeBtns.forEach(btn => {
+    btn.addEventListener('click', () => setMode(btn.dataset.mode, false));
+  });
+
+  // ── Notifications permission ─────────────────────────────
+  if ('Notification' in window && Notification.permission === 'default') {
+    setTimeout(() => Notification.requestPermission(), 3000);
+  }
+
+  // ── Wake Lock (keep screen on while timer runs) ──────────
+  let wakeLock = null;
+  async function requestWakeLock() {
+    if ('wakeLock' in navigator) {
+      try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e) {}
+    }
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && running) requestWakeLock();
+  });
+
+  // ── PWA Install prompt ───────────────────────────────────
+  let deferredPrompt = null;
+  const banner = document.getElementById('install-banner');
+  const installBtn = document.getElementById('install-btn');
+  const dismissBtn = document.getElementById('dismiss-btn');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    banner.classList.add('show');
+  });
+
+  installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    banner.classList.remove('show');
+  });
+
+  dismissBtn.addEventListener('click', () => banner.classList.remove('show'));
+
+  window.addEventListener('appinstalled', () => banner.classList.remove('show'));
+
+  // ── Service Worker ───────────────────────────────────────
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
+  }
+
+  // ── Init ─────────────────────────────────────────────────
+  setMode('work', false);
+</script>
+</body>
+</html>
