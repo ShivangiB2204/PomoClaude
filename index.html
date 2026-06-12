@@ -23,16 +23,16 @@
       --text: #F0F4FF;
       --muted: #4A5568;
       --track: #1A2030;
-      --amber: #F5A623;
-      --amber-dim: #7A5210;
+      --purple: #7C3AED;
+      --purple-dim: #3B1A7A;
       --green: #6BCB77;
       --green-dim: #2D6B3A;
       --blue: #7EB8F7;
       --blue-dim: #2A4E7A;
-      --accent: var(--amber);
-      --accent-dim: var(--amber-dim);
+      --accent: var(--purple);
+      --accent-dim: var(--purple-dim);
       --r: 110;
-      --circ: 691.15; /* 2 * PI * 110 */
+      --circ: 691.15;
     }
 
     html, body {
@@ -61,7 +61,7 @@
       pointer-events: none;
       z-index: 0;
       transition: background 0.8s ease;
-      background: radial-gradient(ellipse 500px 400px at 50% 40%, rgba(245,166,35,0.09), transparent 70%);
+      background: radial-gradient(ellipse 500px 400px at 50% 40%, rgba(124,58,237,0.09), transparent 70%);
     }
 
     .card {
@@ -81,7 +81,6 @@
       -webkit-backdrop-filter: blur(20px);
     }
 
-    /* Header */
     .header {
       width: 100%;
       display: flex;
@@ -112,7 +111,6 @@
       box-shadow: 0 0 8px var(--accent);
     }
 
-    /* Mode tabs */
     .modes {
       display: flex;
       width: 100%;
@@ -137,7 +135,6 @@
       border-bottom-color: var(--accent);
     }
 
-    /* Timer SVG */
     .timer-wrap {
       position: relative;
       width: 260px;
@@ -198,7 +195,6 @@
       transition: color 0.3s;
     }
 
-    /* Controls */
     .controls {
       display: flex;
       align-items: center;
@@ -227,8 +223,8 @@
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      background: linear-gradient(135deg, var(--amber), rgba(245,166,35,0.8));
-      box-shadow: 0 4px 24px rgba(245,166,35,0.35);
+      background: linear-gradient(135deg, #7C3AED, rgba(124,58,237,0.8));
+      box-shadow: 0 4px 24px rgba(124,58,237,0.35);
       transition: background 0.3s, box-shadow 0.3s;
       -webkit-tap-highlight-color: transparent;
     }
@@ -244,7 +240,6 @@
       transition: color 0.3s;
     }
 
-    /* Install banner */
     #install-banner {
       display: none;
       position: fixed;
@@ -267,7 +262,7 @@
     #install-banner p strong { color: var(--text); display: block; margin-bottom: 2px; }
     #install-btn {
       background: var(--accent);
-      color: #0D1117;
+      color: #fff;
       border: none;
       border-radius: 8px;
       padding: 8px 16px;
@@ -298,7 +293,6 @@
 <div id="glow"></div>
 
 <div class="card">
-  <!-- Header -->
   <div class="header">
     <span class="brand">pomo</span>
     <div class="dots" id="dots">
@@ -309,14 +303,12 @@
     </div>
   </div>
 
-  <!-- Mode tabs -->
   <div class="modes">
     <button class="mode-btn active" data-mode="work">Focus</button>
     <button class="mode-btn" data-mode="short">Short Break</button>
     <button class="mode-btn" data-mode="long">Long Break</button>
   </div>
 
-  <!-- Timer -->
   <div class="timer-wrap">
     <svg class="timer-svg" viewBox="0 0 260 260">
       <circle id="ring-track" cx="130" cy="130" r="110" />
@@ -329,7 +321,6 @@
     </div>
   </div>
 
-  <!-- Controls -->
   <div class="controls">
     <button class="ctrl-btn" id="reset-btn" aria-label="Reset">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4A5568" stroke-width="2" stroke-linecap="round">
@@ -339,7 +330,7 @@
     </button>
 
     <button id="play-btn" aria-label="Start">
-      <svg id="play-icon" width="24" height="24" viewBox="0 0 24 24" fill="#0D1117">
+      <svg id="play-icon" width="24" height="24" viewBox="0 0 24 24" fill="#fff">
         <polygon points="6,3 20,12 6,21"/>
       </svg>
     </button>
@@ -355,7 +346,6 @@
   <p class="session-count">Sessions today — <span id="session-num">0</span></p>
 </div>
 
-<!-- Install banner -->
 <div id="install-banner">
   <div>
     <p><strong>Install Pomo</strong>Add to your home screen for quick access</p>
@@ -365,16 +355,14 @@
 </div>
 
 <script>
-  // ── Config ──────────────────────────────────────────────
   const MODES = {
-    work:  { label: 'Focus',       duration: 25 * 60, color: '#F5A623', dim: '#7A5210', glow: 'rgba(245,166,35,0.09)'  },
+    work:  { label: 'Focus',       duration: 25 * 60, color: '#7C3AED', dim: '#3B1A7A', glow: 'rgba(124,58,237,0.09)'  },
     short: { label: 'Short Break', duration:  5 * 60, color: '#6BCB77', dim: '#2D6B3A', glow: 'rgba(107,203,119,0.09)' },
     long:  { label: 'Long Break',  duration: 15 * 60, color: '#7EB8F7', dim: '#2A4E7A', glow: 'rgba(126,184,247,0.09)' },
   };
   const R = 110, CX = 130, CY = 130;
   const CIRC = 2 * Math.PI * R;
 
-  // ── State ────────────────────────────────────────────────
   let mode     = 'work';
   let timeLeft = MODES.work.duration;
   let running  = false;
@@ -384,7 +372,6 @@
   let blinkOn  = true;
   let blinkTimer = null;
 
-  // ── DOM refs ─────────────────────────────────────────────
   const glow         = document.getElementById('glow');
   const timeText     = document.getElementById('time-text');
   const statusLabel  = document.getElementById('status-label');
@@ -395,7 +382,6 @@
   const sessionNum   = document.getElementById('session-num');
   const modeBtns     = document.querySelectorAll('.mode-btn');
 
-  // ── Helpers ──────────────────────────────────────────────
   function pad(n) { return String(n).padStart(2, '0'); }
 
   function setAccent(color) {
@@ -406,7 +392,6 @@
     const progress = tl / total;
     const offset   = CIRC * (1 - progress);
     ringProgress.style.strokeDashoffset = offset;
-
     const angle = (2 * Math.PI * (1 - progress)) - Math.PI / 2;
     const tx = CX + R * Math.cos(angle);
     const ty = CY + R * Math.sin(angle);
@@ -417,15 +402,12 @@
 
   function updateDots() {
     for (let i = 0; i < 4; i++) {
-      const d = document.getElementById('d' + i);
-      d.classList.toggle('filled', i < (sessions % 4));
+      document.getElementById('d' + i).classList.toggle('filled', i < (sessions % 4));
     }
   }
 
   function renderTime(tl) {
-    const m = Math.floor(tl / 60);
-    const s = tl % 60;
-    timeText.textContent = pad(m) + ':' + pad(s);
+    timeText.textContent = pad(Math.floor(tl / 60)) + ':' + pad(tl % 60);
   }
 
   function setMode(m, autoStart) {
@@ -441,7 +423,6 @@
     ringProgress.style.stroke = cfg.color;
     ringTip.style.fill = cfg.color;
     ringTip.style.filter = `drop-shadow(0 0 6px ${cfg.color})`;
-
     playBtn.style.background = `linear-gradient(135deg, ${cfg.color}, ${cfg.color}CC)`;
     playBtn.style.boxShadow = `0 4px 24px ${cfg.color}50`;
 
@@ -460,11 +441,10 @@
       playIcon.setAttribute('fill', '#fff');
     } else {
       playIcon.innerHTML = `<polygon points="6,3 20,12 6,21"/>`;
-      playIcon.setAttribute('fill', '#0D1117');
+      playIcon.setAttribute('fill', '#fff');
     }
   }
 
-  // ── Audio ────────────────────────────────────────────────
   function playTone(freq, dur, delay) {
     try {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -488,21 +468,17 @@
     playTone(880, 0.2, 0.55);
   }
 
-  // ── Timer logic ──────────────────────────────────────────
   function startTimer() {
     running = true;
     setPlayIcon(true);
     statusLabel.textContent = MODES[mode].label;
-
-    // disable smooth transition while ticking
     ringProgress.style.transition = 'stroke-dashoffset 1s linear, stroke 0.6s ease';
 
     clearInterval(blinkTimer);
     blinkTimer = setInterval(() => {
       blinkOn = !blinkOn;
-      const t = timeText.textContent;
+      const parts = timeText.textContent.replace(/<[^>]+>/g, '').split(':');
       const colon = blinkOn ? ':' : '<span style="opacity:0.25">:</span>';
-      const parts = t.split(':');
       timeText.innerHTML = parts[0] + colon + parts[1];
     }, 500);
 
@@ -526,7 +502,7 @@
     setPlayIcon(false);
     statusLabel.textContent = 'Paused';
     ringProgress.style.transition = 'stroke-dashoffset 0.3s ease, stroke 0.6s ease';
-    renderTime(timeLeft); // clear blink
+    renderTime(timeLeft);
   }
 
   function onComplete() {
@@ -536,11 +512,9 @@
     timeText.style.color = MODES[mode].color;
     renderTime(0);
 
-    // Notify
     if (Notification.permission === 'granted') {
       new Notification('Pomo', {
         body: mode === 'work' ? '🎉 Focus session complete! Time for a break.' : '⏰ Break over. Ready to focus?',
-        icon: './manifest.json',
         silent: false,
       });
     }
@@ -551,15 +525,13 @@
         sessions++;
         sessionNum.textContent = sessions;
         updateDots();
-        const next = (sessions % 4 === 0) ? 'long' : 'short';
-        setMode(next, false);
+        setMode((sessions % 4 === 0) ? 'long' : 'short', false);
       } else {
         setMode('work', false);
       }
     }, 1500);
   }
 
-  // ── Button handlers ──────────────────────────────────────
   playBtn.addEventListener('click', () => {
     if (timeLeft === 0) { setMode(mode, true); return; }
     if (running) { pauseTimer(); }
@@ -580,20 +552,15 @@
 
   document.getElementById('skip-btn').addEventListener('click', () => {
     const keys = Object.keys(MODES);
-    const next = keys[(keys.indexOf(mode) + 1) % keys.length];
-    setMode(next, false);
+    setMode(keys[(keys.indexOf(mode) + 1) % keys.length], false);
   });
 
-  modeBtns.forEach(btn => {
-    btn.addEventListener('click', () => setMode(btn.dataset.mode, false));
-  });
+  modeBtns.forEach(btn => btn.addEventListener('click', () => setMode(btn.dataset.mode, false)));
 
-  // ── Notifications permission ─────────────────────────────
   if ('Notification' in window && Notification.permission === 'default') {
     setTimeout(() => Notification.requestPermission(), 3000);
   }
 
-  // ── Wake Lock (keep screen on while timer runs) ──────────
   let wakeLock = null;
   async function requestWakeLock() {
     if ('wakeLock' in navigator) {
@@ -604,9 +571,8 @@
     if (document.visibilityState === 'visible' && running) requestWakeLock();
   });
 
-  // ── PWA Install prompt ───────────────────────────────────
   let deferredPrompt = null;
-  const banner = document.getElementById('install-banner');
+  const banner     = document.getElementById('install-banner');
   const installBtn = document.getElementById('install-btn');
   const dismissBtn = document.getElementById('dismiss-btn');
 
@@ -619,23 +585,18 @@
   installBtn.addEventListener('click', async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
+    await deferredPrompt.userChoice;
     deferredPrompt = null;
     banner.classList.remove('show');
   });
 
   dismissBtn.addEventListener('click', () => banner.classList.remove('show'));
-
   window.addEventListener('appinstalled', () => banner.classList.remove('show'));
 
-  // ── Service Worker ───────────────────────────────────────
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch(() => {});
-    });
+    window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
   }
 
-  // ── Init ─────────────────────────────────────────────────
   setMode('work', false);
 </script>
 </body>
