@@ -355,6 +355,15 @@
 </div>
 
 <script>
+  // ── Capture install prompt IMMEDIATELY before anything else ──
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const banner = document.getElementById('install-banner');
+    if (banner) banner.classList.add('show');
+  });
+
   const MODES = {
     work:  { label: 'Focus',       duration: 25 * 60, color: '#7C3AED', dim: '#3B1A7A', glow: 'rgba(124,58,237,0.09)'  },
     short: { label: 'Short Break', duration:  5 * 60, color: '#6BCB77', dim: '#2D6B3A', glow: 'rgba(107,203,119,0.09)' },
@@ -413,9 +422,9 @@
     timeText.innerHTML = m + '<span id="colon">:</span>' + s;
   }
 
-  function setMode(m, autoStart) {
+  function setMode(m, autoStart, overrideTimeLeft) {
     mode = m;
-    timeLeft = MODES[m].duration;
+    timeLeft = (overrideTimeLeft !== undefined) ? overrideTimeLeft : MODES[m].duration;
     running = false;
     clearInterval(ticker);
     clearInterval(blinkTimer);
@@ -631,13 +640,4 @@
   });
 
   // Recover timer if app was suspended mid-session
-  try {
-    const savedEnd  = parseInt(localStorage.getItem('pomo_endTime') || '0');
-    const savedMode = localStorage.getItem('pomo_mode');
-    if (savedEnd && savedMode && MODES[savedMode]) {
-      const remaining = Math.round((savedEnd - Date.now()) / 1000);
-      if (remaining > 0) {
-        // Session still running — restore it
-        mode = savedMode;
-        timeLeft = remaining;
-  
+  let
