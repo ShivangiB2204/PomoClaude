@@ -408,7 +408,9 @@
   }
 
   function renderTime(tl) {
-    timeText.textContent = pad(Math.floor(tl / 60)) + ':' + pad(tl % 60);
+    const m = pad(Math.floor(tl / 60));
+    const s = pad(tl % 60);
+    timeText.innerHTML = m + '<span id="colon">:</span>' + s;
   }
 
   function setMode(m, autoStart) {
@@ -501,20 +503,21 @@
   function startTimer() {
     running = true;
     endTime = Date.now() + timeLeft * 1000;
+    // Persist endTime so we can recover it after app suspension
+    try { localStorage.setItem('pomo_endTime', endTime); localStorage.setItem('pomo_mode', mode); } catch(e) {}
     setPlayIcon(true);
     statusLabel.textContent = MODES[mode].label;
     ringProgress.style.transition = 'stroke-dashoffset 1s linear, stroke 0.6s ease';
 
+    // Blink colon using the dedicated span — never touches the digits
     clearInterval(blinkTimer);
     blinkTimer = setInterval(() => {
       blinkOn = !blinkOn;
-      const parts = timeText.textContent.replace(/<[^>]+>/g, '').split(':');
-      const colon = blinkOn ? ':' : '<span style="opacity:0.25">:</span>';
-      timeText.innerHTML = parts[0] + colon + parts[1];
+      const colon = document.getElementById('colon');
+      if (colon) colon.style.opacity = blinkOn ? '1' : '0.2';
     }, 500);
 
     ticker = setInterval(() => {
-      // Always derive time from wall clock — accurate even after screen-off
       const remaining = Math.max(0, Math.round((endTime - Date.now()) / 1000));
       timeLeft = remaining;
       renderTime(timeLeft);
@@ -523,17 +526,18 @@
         clearInterval(ticker);
         clearInterval(blinkTimer);
         running = false;
+        try { localStorage.removeItem('pomo_endTime'); } catch(e) {}
         onComplete();
       }
-    }, 500); // poll twice per second so it catches up quickly after wake
+    }, 500);
   }
 
   function pauseTimer() {
     running = false;
-    // Capture accurate remaining time from wall clock before stopping
     timeLeft = Math.max(0, Math.round((endTime - Date.now()) / 1000));
     clearInterval(ticker);
     clearInterval(blinkTimer);
+    try { localStorage.removeItem('pomo_endTime'); } catch(e) {}
     setPlayIcon(false);
     statusLabel.textContent = 'Paused';
     ringProgress.style.transition = 'stroke-dashoffset 0.3s ease, stroke 0.6s ease';
@@ -612,7 +616,6 @@
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && running) {
       requestWakeLock();
-      // Immediately sync display to wall clock after screen-on
       const remaining = Math.max(0, Math.round((endTime - Date.now()) / 1000));
       timeLeft = remaining;
       renderTime(timeLeft);
@@ -621,28 +624,20 @@
         clearInterval(ticker);
         clearInterval(blinkTimer);
         running = false;
+        try { localStorage.removeItem('pomo_endTime'); } catch(e) {}
         onComplete();
       }
     }
   });
 
-  let deferredPrompt = null;
-  const banner     = document.getElementById('install-banner');
-  const installBtn = document.getElementById('install-btn');
-  const dismissBtn = document.getElementById('dismiss-btn');
-
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    banner.classList.add('show');
-  });
-
-  installBtn.addEventListener('click', async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
-    deferredPrompt = null;
-    banner.classList.remove('show');
-  });
-
+  // Recover timer if app was suspended mid-session
+  try {
+    const savedEnd  = parseInt(localStorage.getItem('pomo_endTime') || '0');
+    const savedMode = localStorage.getItem('pomo_mode');
+    if (savedEnd && savedMode && MODES[savedMode]) {
+      const remaining = Math.round((savedEnd - Date.now()) / 1000);
+      if (remaining > 0) {
+        // Session still running — restore it
+        mode = savedMode;
+        timeLeft = remaining;
   
