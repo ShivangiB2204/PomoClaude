@@ -1,8 +1,5 @@
-const CACHE = 'pomo-v6';
-const ASSETS = [
-  './index.html',
-  './manifest.json'
-];
+const CACHE = 'pomo-v7';
+const ASSETS = ['./index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -18,8 +15,16 @@ self.addEventListener('activate', e => {
   );
 });
 
+// Network-first: always try network, fall back to cache if offline
 self.addEventListener('fetch', e => {
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
+    fetch(e.request)
+      .then(response => {
+        // Save fresh copy to cache
+        const copy = response.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy));
+        return response;
+      })
+      .catch(() => caches.match(e.request))
   );
 });
