@@ -1,4 +1,4 @@
-const CACHE = 'pomo-v5';
+const CACHE = 'pomo-v6';
 const ASSETS = [
   './index.html',
   './manifest.json'
